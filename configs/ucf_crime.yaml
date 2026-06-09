@@ -1,0 +1,45 @@
+_base_: ./base.yaml
+
+dataset:
+  name: ucf_crime
+  root: /g/ucf
+  split: train
+  annotation_file: experiments/ucf/test_video_annotations.txt
+  num_segments: 32
+  image_size: 224
+  class_names:
+    - normal
+    - Abuse
+    - Arrest
+    - Arson
+    - Assault
+    - Burglary
+    - Explosion
+    - Fighting
+    - RoadAccidents
+    - Robbery
+    - Shooting
+    - Shoplifting
+    - Stealing
+    - Vandalism
+
+model:
+  prompt:
+    class_names:
+      - normal
+      - Abuse
+      - Arrest
+      - Arson
+      - Assault
+      - Burglary
+      - Explosion
+      - Fighting
+      - RoadAccidents
+      - Robbery
+      - Shooting
+      - Shoplifting
+      - Stealing
+      - Vandalism
+
+metrics:
+  primary: auc

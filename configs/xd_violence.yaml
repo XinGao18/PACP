@@ -1,0 +1,31 @@
+_base_: ./base.yaml
+
+dataset:
+  name: xd_violence
+  root: /g/xd
+  split: train
+  annotation_file: experiments/xd/test_video_annotations.txt
+  num_segments: 32
+  image_size: 224
+  class_names:
+    - normal
+    - B1
+    - B2
+    - B3
+    - B4
+    - B5
+    - B6
+
+model:
+  prompt:
+    class_names:
+      - normal
+      - B1
+      - B2
+      - B3
+      - B4
+      - B5
+      - B6
+
+metrics:
+  primary: ap

@@ -1,0 +1,66 @@
+project:
+  name: pcpl
+  seed: 42
+
+dataset:
+  name: ucf_crime
+  root: ./data/raw
+  split: train
+  split_file: null
+  annotation_file: null
+  feature_path: null
+  feature_key: appearance
+  num_segments: 32
+  image_size: 224
+  normalization: clip
+
+model:
+  clip_model: ViT-B-16
+  clip_download_root: models/clip
+  feature_dim: 512
+  projection_dim: 512
+  motion:
+    first_mode: zero
+    normalize: true
+  temporal:
+    type: conv
+    hidden_dim: 512
+    num_layers: 1
+    kernel_size: 3
+    num_heads: 4
+    dropout: 0.0
+    normalize: true
+  prompt:
+    context_length: 8
+    template: "{} a surveillance video of {}"
+    class_names:
+      - normal
+      - abnormal
+  prototype:
+    alpha: 1.0
+    tau_p: 10.0
+    tau_e: 10.0
+    margin: 0.2
+
+loss:
+  top_k: 4
+  weights:
+    cls: 1.0
+    align: 0.1
+    sep: 0.1
+
+train:
+  epochs: 50
+  batch_size: 8
+  lr: 0.0001
+  weight_decay: 0.0001
+  use_amp: true
+
+metrics:
+  primary: auc
+  anomaly_score: one_minus_normal
+
+logging:
+  use_tensorboard: true
+  use_wandb: false
+  run_name: pcpl
