@@ -31,25 +31,25 @@
 
   Instead of introducing an additional optical-flow network or encoding frame differences directly, we compute motion cues in the CLIP feature space. Specifically, the motion representation is obtained by the temporal difference between adjacent appearance features:
   
-$$
+$
   \mathbf{m}_t = \text{Norm}(\mathbf{a}t - \mathbf{a}{t-1}),
-$$
+$
 
   where ($\mathbf{m}_1$) is initialized as a zero vector or copied from the first valid difference.
 
   This feature-level difference provides a simple and efficient motion descriptor. It avoids additional motion encoders while still capturing temporal changes between adjacent sampled frames. Since the CLIP image encoder is frozen, this design also keeps the trainable part of the model lightweight.
 
   The appearance and motion features are concatenated and projected into a unified feature space:
-$$
+$
   \mathbf{u}_t = \phi_f([\mathbf{a}_t ; \mathbf{m}_t]),
-$$
+$
 
   where ($[\cdot ; \cdot]$) denotes feature concatenation and ($\phi_f(\cdot)$) is a trainable projection layer.
 
   To incorporate temporal context, the fused sequence (${\mathbf{u}_{t=1}^{T}}$) is further processed by a temporal enhancement head:
-$$
+$
   \mathbf{z}{1:T} = H{\theta}(\mathbf{u}{1:T}),
-$$
+$
 
   where (H{\theta}) can be implemented as a lightweight temporal convolutional head, temporal Transformer head, or other sequence modeling module. The output ($\mathbf{z}_t$) denotes the enhanced visual representation of the (t)-th segment.
 
