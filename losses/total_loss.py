@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from losses.topk_mil_loss import TopKMILClassificationLoss
-from losses.prototype_loss import PromptPrototypeAlignmentLoss, PrototypeSeparationLoss
+from losses.prototype_loss import NormalVideoSuppressionLoss, PromptPrototypeAlignmentLoss, PrototypeSeparationLoss
 
 
 @dataclass
@@ -14,18 +14,42 @@ class LossWeights:
     cls: float = 1.0
     align: float = 0.1
     sep: float = 0.1
+    normal_supp: float = 0.0
 
 
-def total_loss(l_cls: torch.Tensor, l_align: torch.Tensor, l_sep: torch.Tensor, weights: LossWeights) -> torch.Tensor:
-    return weights.cls * l_cls + weights.align * l_align + weights.sep * l_sep
+def total_loss(
+    l_cls: torch.Tensor,
+    l_align: torch.Tensor,
+    l_sep: torch.Tensor,
+    l_normal_supp: torch.Tensor | None,
+    weights: LossWeights,
+) -> torch.Tensor:
+    l_normal_supp = l_cls * 0.0 if l_normal_supp is None else l_normal_supp
+    return weights.cls * l_cls + weights.align * l_align + weights.sep * l_sep + weights.normal_supp * l_normal_supp
 
 
 class TotalLoss(nn.Module):
-    def __init__(self, top_k: int | float = 1, margin: float = 0.2, weights: LossWeights | None = None) -> None:
+    def __init__(
+        self,
+        top_k: int | float = 1,
+        margin: float = 0.2,
+        weights: LossWeights | None = None,
+        normal_class_index: int = 0,
+        normal_compact_weight: float = 0.1,
+        normal_diversity_weight: float = 0.05,
+        normal_diversity_margin: float = 0.95,
+    ) -> None:
         super().__init__()
         self.classification_loss = TopKMILClassificationLoss(top_k=top_k)
         self.alignment_loss = PromptPrototypeAlignmentLoss()
-        self.separation_loss = PrototypeSeparationLoss(margin=margin)
+        self.separation_loss = PrototypeSeparationLoss(
+            margin=margin,
+            normal_class_index=normal_class_index,
+            normal_compact_weight=normal_compact_weight,
+            normal_diversity_weight=normal_diversity_weight,
+            normal_diversity_margin=normal_diversity_margin,
+        )
+        self.normal_suppression_loss = NormalVideoSuppressionLoss(normal_class_index=normal_class_index)
         self.weights = weights or LossWeights()
 
     def forward(
@@ -42,14 +66,21 @@ class TotalLoss(nn.Module):
         if labels is None:
             raise ValueError("labels are required")
         l_cls, video_scores = self.classification_loss(outputs["class_logits"], labels)
-        l_align = self.alignment_loss(outputs["visual_prototypes"], outputs["prompt_embeddings"])
-        l_sep = self.separation_loss(outputs["visual_prototypes"])
-        loss = total_loss(l_cls, l_align, l_sep, self.weights)
+        prototype_mask = outputs.get("prototype_mask")
+        l_align = self.alignment_loss(outputs["visual_prototypes"], outputs["prompt_embeddings"], prototype_mask)
+        l_sep = self.separation_loss(outputs["visual_prototypes"], prototype_mask)
+        l_normal_supp = (
+            self.normal_suppression_loss(outputs["class_probabilities"], labels)
+            if self.weights.normal_supp
+            else l_cls * 0.0
+        )
+        loss = total_loss(l_cls, l_align, l_sep, l_normal_supp, self.weights)
         return {
             "loss": loss,
             "cls": l_cls,
             "align": l_align,
             "sep": l_sep,
+            "normal_supp": l_normal_supp,
             "video_scores": video_scores.detach(),
         }
 
@@ -65,5 +96,10 @@ def build_total_loss(cfg: dict) -> TotalLoss:
             cls=float(weights_cfg.get("cls", 1.0)),
             align=float(weights_cfg.get("align", 0.1)),
             sep=float(weights_cfg.get("sep", 0.1)),
+            normal_supp=float(weights_cfg.get("normal_supp", 0.0)),
         ),
+        normal_class_index=int(prototype_cfg.get("normal_class_index", 0)),
+        normal_compact_weight=float(prototype_cfg.get("normal_compact_weight", 0.1)),
+        normal_diversity_weight=float(prototype_cfg.get("normal_diversity_weight", 0.05)),
+        normal_diversity_margin=float(prototype_cfg.get("normal_diversity_margin", 0.95)),
     )

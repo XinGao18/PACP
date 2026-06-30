@@ -24,22 +24,22 @@ dataset:
     - Vandalism
 
 model:
-  prompt:
-    class_names:
-      - normal
-      - Abuse
-      - Arrest
-      - Arson
-      - Assault
-      - Burglary
-      - Explosion
-      - Fighting
-      - RoadAccidents
-      - Robbery
-      - Shooting
-      - Shoplifting
-      - Stealing
-      - Vandalism
+  prototype:
+    num_normal_prototypes: 4
+    num_abnormal_prototypes: 2
+    normal_class_index: 0
+    multi_proto_aggregation: softmax
+    multi_proto_temperature: 1.5
+    use_motion_prototypes: true
+    visual_alpha: 0.7
+    motion_alpha: 0.3
+    normal_compact_weight: 0.05
+    normal_diversity_weight: 0.01
+    normal_diversity_margin: 0.95
+
+loss:
+  weights:
+    normal_supp: 0.002
 
 metrics:
-  primary: auc
+  primary: map

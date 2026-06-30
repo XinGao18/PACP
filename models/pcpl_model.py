@@ -33,6 +33,14 @@ class PCPLModel(nn.Module):
         prototype_alpha: float = 1.0,
         tau_p: float = 10.0,
         tau_e: float = 10.0,
+        num_normal_prototypes: int = 1,
+        num_abnormal_prototypes: int = 1,
+        normal_class_index: int = 0,
+        multi_proto_aggregation: str = "softmax",
+        multi_proto_temperature: float = 1.0,
+        use_motion_prototypes: bool = False,
+        motion_alpha: float = 0.5,
+        visual_alpha: float = 1.0,
         top_k: int | float = 4,
         use_amp: bool = True,
     ) -> None:
@@ -69,11 +77,20 @@ class PCPLModel(nn.Module):
             alpha=prototype_alpha,
             tau_p=tau_p,
             tau_e=tau_e,
+            num_normal_prototypes=num_normal_prototypes,
+            num_abnormal_prototypes=num_abnormal_prototypes,
+            normal_class_index=normal_class_index,
+            multi_proto_aggregation=multi_proto_aggregation,
+            multi_proto_temperature=multi_proto_temperature,
+            use_motion_prototypes=use_motion_prototypes,
+            motion_alpha=motion_alpha,
+            visual_alpha=visual_alpha,
+            motion_feature_dim=feature_dim,
         )
 
     def forward(self, frames_or_features: torch.Tensor, is_feature_input: bool | None = None) -> Dict[str, torch.Tensor]:
         encoded = self.encoder(frames_or_features, is_feature_input=is_feature_input)
-        classified = self.classifier(encoded["z"])
+        classified = self.classifier(features=encoded["z"], motion=encoded["motion"])
         class_logits = classified["class_logits"]
         class_probabilities = classified["class_probabilities"]
         video_scores = topk_video_scores(class_logits, self.top_k)
@@ -92,7 +109,7 @@ def build_pcpl_model(cfg: Dict[str, Any]) -> PCPLModel:
     temporal_cfg = model_cfg.get("temporal", {})
     prompt_cfg = model_cfg.get("prompt", {})
     prototype_cfg = model_cfg.get("prototype", {})
-    class_names = tuple(prompt_cfg.get("class_names") or cfg.get("dataset", {}).get("class_names") or ["normal", "abnormal"])
+    class_names = tuple(cfg.get("dataset", {}).get("class_names") or prompt_cfg.get("class_names") or ["normal", "abnormal"])
     return PCPLModel(
         class_names=class_names,
         clip_model=model_cfg.get("clip_model", "ViT-B-16"),
@@ -113,6 +130,14 @@ def build_pcpl_model(cfg: Dict[str, Any]) -> PCPLModel:
         prototype_alpha=float(prototype_cfg.get("alpha", 1.0)),
         tau_p=float(prototype_cfg.get("tau_p", 10.0)),
         tau_e=float(prototype_cfg.get("tau_e", 10.0)),
+        num_normal_prototypes=int(prototype_cfg.get("num_normal_prototypes", 1)),
+        num_abnormal_prototypes=int(prototype_cfg.get("num_abnormal_prototypes", 1)),
+        normal_class_index=int(prototype_cfg.get("normal_class_index", 0)),
+        multi_proto_aggregation=prototype_cfg.get("multi_proto_aggregation", "softmax"),
+        multi_proto_temperature=float(prototype_cfg.get("multi_proto_temperature", 1.0)),
+        use_motion_prototypes=bool(prototype_cfg.get("use_motion_prototypes", False)),
+        motion_alpha=float(prototype_cfg.get("motion_alpha", 0.5)),
+        visual_alpha=float(prototype_cfg.get("visual_alpha", 1.0)),
         top_k=cfg.get("loss", {}).get("top_k", 4),
         use_amp=bool(cfg.get("train", {}).get("use_amp", True)),
     )
