@@ -38,7 +38,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def train_one_epoch(model, loader, optimizer, loss_fn, device: torch.device) -> Dict[str, float]:
+def train_one_epoch(model, loader, optimizer, loss_fn, device: torch.device, grad_clip_norm: float | None = None) -> Dict[str, float]:
     model.train()
     totals: Dict[str, float] = {}
     for batch in tqdm(loader, desc="train", leave=False):
@@ -48,6 +48,8 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device: torch.device) -> 
         losses = loss_fn(outputs=outputs, labels=labels)
         optimizer.zero_grad(set_to_none=True)
         losses["loss"].backward()
+        if grad_clip_norm is not None and grad_clip_norm > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
         optimizer.step()
         for key, value in losses.items():
             if torch.is_tensor(value) and value.ndim == 0:
@@ -120,13 +122,15 @@ def main() -> None:
         weight_decay=args.weight_decay or float(train_cfg.get("weight_decay", 1e-4)),
     )
     epochs = args.epochs or int(train_cfg.get("epochs", 50))
+    grad_clip_norm = train_cfg.get("grad_clip_norm")
+    grad_clip_norm = float(grad_clip_norm) if grad_clip_norm is not None else None
     best_value = None
     best_uses_primary = False
     primary_metric = str(cfg.get("metrics", {}).get("primary", "loss"))
     history = []
     anomaly_score = cfg.get("metrics", {}).get("anomaly_score", "one_minus_normal")
     for epoch in range(epochs):
-        metrics = train_one_epoch(model, train_loader, optimizer, loss_fn, device)
+        metrics = train_one_epoch(model, train_loader, optimizer, loss_fn, device, grad_clip_norm=grad_clip_norm)
         if val_loader is not None:
             metrics.update(validate(model, val_loader, loss_fn, device, anomaly_score))
         history.append({"epoch": epoch + 1, **metrics})

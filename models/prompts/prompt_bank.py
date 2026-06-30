@@ -18,7 +18,7 @@ class LearnablePromptBank(nn.Module):
         clip_model: str = "ViT-B/16",
         clip_download_root: str | Path = "models/clip",
         context_length: int = 8,
-        template: str = "{} a surveillance video of {}",
+        template: str = "{} {}",
         normalize: bool = True,
     ) -> None:
         super().__init__()

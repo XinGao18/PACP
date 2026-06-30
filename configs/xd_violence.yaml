@@ -17,15 +17,22 @@ dataset:
     - B6
 
 model:
-  prompt:
-    class_names:
-      - normal
-      - B1
-      - B2
-      - B3
-      - B4
-      - B5
-      - B6
+  prototype:
+    num_normal_prototypes: 4
+    num_abnormal_prototypes: 2
+    normal_class_index: 0
+    multi_proto_aggregation: softmax
+    multi_proto_temperature: 1.0
+    use_motion_prototypes: true
+    visual_alpha: 1.0
+    motion_alpha: 0.5
+    normal_compact_weight: 0.1
+    normal_diversity_weight: 0.05
+    normal_diversity_margin: 0.95
+
+loss:
+  weights:
+    normal_supp: 0.05
 
 metrics:
   primary: ap

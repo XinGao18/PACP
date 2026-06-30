@@ -28,32 +28,42 @@ model:
     num_layers: 1
     kernel_size: 3
     num_heads: 4
-    dropout: 0.0
+    dropout: 0.1
     normalize: true
   prompt:
-    context_length: 8
-    template: "{} a surveillance video of {}"
-    class_names:
-      - normal
-      - abnormal
+    context_length: 12
+    template: "{} {}"
   prototype:
     alpha: 1.0
     tau_p: 10.0
     tau_e: 10.0
     margin: 0.2
+    num_normal_prototypes: 1
+    num_abnormal_prototypes: 1
+    normal_class_index: 0
+    multi_proto_aggregation: softmax
+    multi_proto_temperature: 1.0
+    use_motion_prototypes: false
+    visual_alpha: 1.0
+    motion_alpha: 0.5
+    normal_compact_weight: 0.1
+    normal_diversity_weight: 0.05
+    normal_diversity_margin: 0.95
 
 loss:
   top_k: 4
   weights:
     cls: 1.0
-    align: 0.1
-    sep: 0.1
+    align: 0.02
+    sep: 0.01
+    normal_supp: 0.02
 
 train:
-  epochs: 50
+  epochs: 30
   batch_size: 8
-  lr: 0.0001
-  weight_decay: 0.0001
+  lr: 0.00003
+  weight_decay: 0.00005
+  grad_clip_norm: 1.0
   use_amp: true
 
 metrics:
